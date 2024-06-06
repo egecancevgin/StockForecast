@@ -41,6 +41,7 @@ def peek_data(df):
 
 
 def prepare_dataset_lstm(dataset, time_steps=1):
+  """ For timestamp currency. """
   X, y = [], []
   for i in range(len(dataset) - time_steps):
     X.append(dataset[i:(i + time_steps), 0])
@@ -49,6 +50,7 @@ def prepare_dataset_lstm(dataset, time_steps=1):
 
 
 def lstm_train(df, target_col, train_size):
+  """ Training an LSTM model and performing a forecast. """
   st.write("LSTM Training has begun.")
   scaler = MinMaxScaler(feature_range=(0, 1))
   scaled_data = scaler.fit_transform(df[target_col].values.reshape(-1, 1))
@@ -70,7 +72,7 @@ def lstm_train(df, target_col, train_size):
   model.add(LSTM(units=50))
   model.add(Dense(units=1))
   model.compile(optimizer='adam', loss='mean_squared_error')
-  model.fit(X_train, y_train, epochs=30, batch_size=64, verbose=1)
+  model.fit(X_train, y_train, epochs=20, batch_size=64, verbose=1)
   train_predict = model.predict(X_train)
   test_predict = model.predict(X_test)
   train_predict = scaler.inverse_transform(train_predict)
@@ -86,10 +88,9 @@ def lstm_train(df, target_col, train_size):
   train_predict_plot[time_steps:len(train_predict) + time_steps, :] = train_predict
   test_predict_plot = np.empty_like(scaled_data)
   test_predict_plot[:, :] = np.nan
-  print(len(train_predict), len(test_predict))
-  # Calculate the correct starting and ending indices for the slice
-  start_idx = len(train_predict) + (time_steps * 2) + 1
+  start_idx = len(train_predict) + (time_steps * 2)
   end_idx = start_idx + len(test_predict)
+  test_predict_plot[start_idx:end_idx, :] = test_predict
   fig = go.Figure()
   fig.add_trace(
     go.Scatter(
@@ -100,19 +101,22 @@ def lstm_train(df, target_col, train_size):
     go.Scatter(
       x=df.index[:len(train_predict_plot)], y=train_predict_plot.flatten(),
       mode='lines', name='Train Predictions', line=dict(color='blue')
-    )
+      )
   )
   fig.add_trace(
     go.Scatter(
-      x=df.index[len(train_predict_plot)+1:len(scaled_data)-1], 
-      y=test_predict_plot.flatten(),
-      mode='lines', name='Test Predictions',
-      line=dict(color='blue')
+      x=df.index[:len(test_predict_plot)], y=test_predict_plot.flatten(),
+      mode='lines', name='Test Predictions', line=dict(color='red')
     )
   )
+    
+  # Grafik ayarları
   fig.update_layout(
-    title='Actual vs Predicted', xaxis_title='Date',
-    yaxis_title=target_col, height=600, width=1000
+    title='Actual vs Predicted',
+    xaxis_title='Date',
+    yaxis_title=target_col,
+    height=600,
+    width=1000
   )
   st.plotly_chart(fig)
   return model
@@ -142,7 +146,7 @@ def st_app():
       peek_data(df)
       train_size = st.slider(
       "Training size proportion:", min_value=0.0,
-      max_value=1.0, value=0.8, step=0.01
+      max_value=1.0, step=0.01
       )
       target_col = st.selectbox(
         "Select the target column for time series data:", df.columns
@@ -150,11 +154,11 @@ def st_app():
       if st.button("Train the model"):
         st.write("Model training is in progress...")
         lstm_train(df, target_col=target_col, train_size=train_size)
-
+ 
 
 def main():
-    st.set_page_config(page_title="Dashboard", page_icon="🐶", layout="wide")
-    st_app()
+  st.set_page_config(page_title="Dashboard", page_icon="🐶", layout="wide")
+  st_app()
 
 
 if __name__ == '__main__':
