@@ -1,2 +1,2 @@
 # StockForecast
-Stock Forecasting Mobile Application
+Stock Forecasting Streamlit Application
